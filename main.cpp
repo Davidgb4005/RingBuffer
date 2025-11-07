@@ -3,6 +3,7 @@
 
 int main()
 {
+    
     RingBuffer ring(60);
     RingBuffer ring2(24);
     ring.Debug(false);
