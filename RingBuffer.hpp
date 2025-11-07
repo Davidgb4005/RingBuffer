@@ -22,7 +22,6 @@ public:
 
     // Variables
     int data_availible; // Amount Of Valid Bytes In Buffer
-    bool debug;         // Debug enabled Flag
     char *buffer;       // Ring Buffer
     // Enums
     enum Error
@@ -36,6 +35,7 @@ public:
     };
 
 private:
+    bool debug;         // Debug enabled Flag
     char *read_ptr;
     char *write_ptr;
     char *end_ptr;
