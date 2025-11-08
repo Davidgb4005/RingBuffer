@@ -1,5 +1,9 @@
 #include "RingBuffer.hpp"
+#include <memory>
+#define DEBUG 0
+#if DEBUG
 #include <iostream>
+#endif
 RingBuffer::RingBuffer(int len)
 {
     buffer = new char[len];
@@ -22,46 +26,32 @@ void RingBuffer::ResetBuffer()
     write_ptr = buffer;
     buffer_overflow = false;
     data_availible = 0;
-    if (debug)
-    {
-        std::cout << "Buffer Reset" << std::endl;
-    }
+    PrintDebug("Buffer Reset");
 }
+
 int RingBuffer::ReadData(char *c)
 {
     if (buffer_overflow)
     {
-        if (debug)
-        {
-            std::cout << "Buffer Overflow" << std::endl;
-        }
+        PrintDebug("Buffer Overflow");
         return BUFFER_OVERFLOW;
     }
     if (read_ptr == write_ptr)
     {
-        if (debug)
-        {
-            std::cout << "No Data" << std::endl;
-        }
+        PrintDebug("No Data");
         return NO_DATA;
     }
     int msg_len = *read_ptr;
     int bits_availible;
     if (msg_len < 1)
     {
-        if (debug)
-        {
-            std::cout << "Invalid Data" << std::endl;
-        }
+        PrintDebug("Invalid Data");
         return INVALID_DATA;
     }
 
     if (data_availible < msg_len)
     {
-        if (debug)
-        {
-            std::cout << "Incomplete Data" << std::endl;
-        }
+        PrintDebug("Incomplete Data");
         return INCOMPLETE_DATA;
     }
     else
@@ -81,19 +71,13 @@ int RingBuffer::ReadData(char *c)
                 read_ptr = start_ptr;
             if (data_availible < 0)
             {
-                if (debug)
-                {
-                    std::cout << "Buffer Overread Data" << std::endl;
-                }
+                PrintDebug("Buffer Overread");
                 return BUFFER_OVERREAD;
             }
         }
         return i;
     }
-    if (debug)
-    {
-        std::cout << "Unexpected Error" << std::endl;
-    }
+    PrintDebug("Unexpected Error");
     return UNEXPECTED_ERROR;
 }
 
@@ -106,10 +90,7 @@ int RingBuffer::WriteData(char *c, int len)
     if (buffer_len < data_availible + len)
     {
         buffer_overflow = true;
-        if (debug)
-        {
-            std::cout << "Buffer Overflow" << std::endl;
-        }
+        PrintDebug("Buffer Overflow");
         return BUFFER_OVERFLOW;
     }
     else
@@ -128,15 +109,19 @@ int RingBuffer::WriteData(char *c, int len)
         }
         return i;
     }
-    if (debug)
-    {
-        std::cout << "Unexpected Error" << std::endl;
-    }
+    PrintDebug("Unexpected Error");
     return UNEXPECTED_ERROR;
 }
 
+void RingBuffer::PrintDebug(const char *c)
+{
+#if DEBUG
+    std::cout << c << std::endl;
+#endif
+}
 void RingBuffer::PrintData()
 {
+#if DEBUG
     int len = 0;
     char *temp_read_ptr = read_ptr;
     int temp_data_available = data_availible;
@@ -172,16 +157,15 @@ void RingBuffer::PrintData()
         }
         std::cout << std::endl;
     }
+#endif
 }
 void RingBuffer::PrintMsg(char *c, int len)
 {
+#if DEBUG
     for (int k = 0; k < len; k++)
     {
         std::cout << c[k];
     }
     std::cout << std::endl;
-}
-void RingBuffer::Debug(bool en)
-{
-    debug = en;
+#endif
 }

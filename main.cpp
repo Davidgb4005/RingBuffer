@@ -1,12 +1,11 @@
-#include <iostream>
+
 #include "RingBuffer.hpp"
 
 int main()
 {
     
-    RingBuffer ring(60);
+    RingBuffer ring(120);
     RingBuffer ring2(24);
-    ring.Debug(false);
     int len = 0;
     char msg[255];
     // Messages to write
@@ -39,7 +38,6 @@ int main()
 
     ring.WriteData(message8_part1, sizeof(message8_part1));
     ring.WriteData(message8_part2, sizeof(message8_part2));
-    ring.ResetBuffer();
     ring.WriteData(message9_part1, sizeof(message9_part1));
     ring.WriteData(message9_part2, sizeof(message9_part2));
 

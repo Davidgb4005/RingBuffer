@@ -13,13 +13,12 @@ public:
     int ReadData(char *c);// Read 1 Complete Message From (This->buffer) and copy it into (c)
     int WriteData(char *c, int len);// Write (len) Bytes From (c) Into (This->buffer)
 
-    // Debugging Static Functions
-    static void PrintMsg(char *c, int len); // Prints (len) Bytes From Pointer (c)
 
-    // Debugging Memeber Functions
-    void Debug(bool en);
+
+    // Debugging Memeber Functions MUST USE (#DEFINE DEBUG 1)
     void PrintData(); // Prints All Bytes In Buffer DOES NOT CONSUME!
-
+    static void PrintMsg(char *c, int len); // Prints (len) Bytes From Pointer (c)
+    void PrintDebug(const char* c);
     // Variables
     int data_availible; // Amount Of Valid Bytes In Buffer
     char *buffer;       // Ring Buffer
