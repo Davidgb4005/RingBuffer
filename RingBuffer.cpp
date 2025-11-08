@@ -45,6 +45,7 @@ int RingBuffer::ReadData(char *c)
     int bits_availible;
     if (msg_len < 1)
     {
+        read_ptr++;
         PrintDebug("Invalid Data");
         return INVALID_DATA;
     }
