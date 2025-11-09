@@ -122,7 +122,7 @@ void RingBuffer::PrintDebug(const char *c)
 }
 void RingBuffer::PrintData()
 {
-#if DEBUG
+#if DEBUG //Enables Console Output For Debugging
     int len = 0;
     char *temp_read_ptr = read_ptr;
     int temp_data_available = data_availible;
