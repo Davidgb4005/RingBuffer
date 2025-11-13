@@ -8,11 +8,24 @@ int main()
     std::string input;
     char buffer[256];
 
-    char message[] = {"This is a test"};
-    ring.WriteData(message, 14);
+    RingBuffer::Telegram message_1{
+        20,
+        "12345678901234567890",
+        0
+    };
+    RingBuffer::Telegram message_2{
+        0,
+        new char[100],
+        0
+    };
+    int rep = ring.WriteData(message_1);
+    std::cout << rep << std::endl;
+
     ring.PrintData();
     if (ring.DataAvailible())
-        int len = ring.ReadData(buffer);
-    
+    {
+        int len = ring.ReadData(message_2);
+        ring.PrintMsg(message_2);
+    }
     return 0;
 }

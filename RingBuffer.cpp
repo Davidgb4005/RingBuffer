@@ -26,71 +26,65 @@ void RingBuffer::ResetBuffer()
     write_ptr = buffer;
     buffer_overflow = false;
     data_availible = 0;
-    PrintDebug("Buffer Reset");
 }
 
-int RingBuffer::ReadData(char *c)
+int RingBuffer::ReadData(Telegram & data)
 {
 
-    int msg_len = *read_ptr;
-    if (data_availible < msg_len)
+    data.message_length = *read_ptr;
+    if (data_availible < data.message_length)
     {
-        PrintDebug("Incomplete Data");
         return INCOMPLETE_DATA;
     }
     else
     {
         // Read Message Length As First Byte
-        uint16_t check_sum = 0;
-        check_sum += *(read_ptr);
+        data.check_sum = 0;
+        data.check_sum  += *(read_ptr);
         AdvanceReadPointer();
         int i;
-        for (i = 0; i < msg_len - 2; i++)
+        for (i = 0; i < data.message_length - 2; i++)
         {
-            *(c + i) = *(read_ptr);
-            check_sum += *(read_ptr);
+            *(data.message + i) = *(read_ptr);
+            data.check_sum  += *(read_ptr);
             AdvanceReadPointer();
         }
-        if (!ValidateCheckSum(&check_sum))
+        if (!ValidateCheckSum(&data.check_sum ))
         {
             return INVALID_CHECKSUM;
         }
 
         return i;
     }
-    PrintDebug("Unexpected Error");
     return UNEXPECTED_ERROR;
 }
 
-int RingBuffer::WriteData(const char *c, int len)
+int RingBuffer::WriteData(Telegram data)
 {
-    if (len < 1)
+    if (data.message_length < 2)
     {
-        PrintDebug("Invalid Data");
         return INVALID_DATA;
     }
-    else if (len > 253)
+    else if (data.message_length  > 253)
     {
-        PrintDebug("MESSAGE_OVERLENGTH");
         return MESSAGE_OVERLENGTH;
     }
     else
     {
         uint16_t check_sum = 0;
-        *write_ptr = len + 2; // Adds 2 To Account For Checksum
+        *write_ptr = data.message_length + 2; // Adds 2 To Account For Checksum
         check_sum += *write_ptr;
         AdvanceWritePointer();
         int i;
-        for (i = 0; i < len; i++)
+        for (i = 0; i < data.message_length; i++)
         {
-            *write_ptr = *(c + i);
+            *write_ptr = *(data.message + i);
             check_sum += *write_ptr;
             AdvanceWritePointer();
         }
         InsertCheckSum(&check_sum);
         return i;
     }
-    PrintDebug("Unexpected Error");
     return UNEXPECTED_ERROR;
 }
 int RingBuffer::DataAvailible()
@@ -102,7 +96,6 @@ int RingBuffer::AdvanceReadPointer()
 {
     if (data_availible < 1)
     {
-        PrintDebug("Buffer Overread");
         return BUFFER_OVERREAD;
     }
     else if (read_ptr == end_ptr)
@@ -123,7 +116,6 @@ int RingBuffer::AdvanceWritePointer()
 
     if (write_ptr == read_ptr - 1 || (write_ptr == end_ptr && read_ptr == start_ptr))
     {
-        PrintDebug("Buffer Overflow");
         return BUFFER_OVERFLOW;
     }
     else if (write_ptr == end_ptr)
@@ -160,17 +152,11 @@ bool RingBuffer::ValidateCheckSum(uint16_t * check_sum_ptr)
     //if ((msb + lsb + *check_sum_ptr) != 0) Figure Out Why This Fucks it
     if ((check_sum) != 0)
     {
-        PrintDebug("Invaild Checksum");
         return false;
     }
     return true;
 }
-void RingBuffer::PrintDebug(const char *c)
-{
-#if DEBUG
-    std::cout << c << std::endl;
-#endif
-}
+
 void RingBuffer::PrintData()
 {
 #if DEBUG // Enables Console Output For Debugging
@@ -212,12 +198,12 @@ void RingBuffer::PrintData()
 #endif
 }
 
-void RingBuffer::PrintMsg(const char *c, int len)
+void RingBuffer::PrintMsg(Telegram data)
 {
 #if DEBUG
-    for (int k = 0; k < len; k++)
+    for (int k = 0; k < data.message_length; k++)
     {
-        std::cout << c[k];
+        std::cout << data.message[k];
     }
     std::cout << std::endl;
 #endif
