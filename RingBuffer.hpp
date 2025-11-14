@@ -3,12 +3,6 @@
 class RingBuffer
 {
 public:
-    // Structs
-    struct Telegram{
-        uint8_t message_length;
-        char * message;
-        uint16_t check_sum;
-    };
     // Constructors
     RingBuffer(int len);
     ~RingBuffer();
@@ -16,14 +10,14 @@ public:
     void ResetBuffer();// Resets All Errors And Resets (read_ptr) And (write_ptr) To (start_ptr)
 
     // Memeber Functions
-    int ReadData(Telegram & data);// Read 1 Complete Message From (This->buffer) and copy it into (c)
-    int WriteData(Telegram data);// Write (len) Bytes From (c) Into (This->buffer)
+    int ReadData(char * buffer);// Read 1 Complete Message From (This->buffer) and copy it into (c)
+    int WriteData(char * buffer, int len);// Write (len) Bytes From (c) Into (This->buffer)
     int DataAvailible();
 
 
     // Debugging Memeber Functions MUST USE (#DEFINE DEBUG 1)
     void PrintData(); // Prints All Bytes In Telegram DOES NOT CONSUME!
-    static void PrintMsg(Telegram data); // Prints (len) Bytes From Pointer (c)
+    static void PrintMsg(char * buffer, int len); // Prints (len) Bytes From Pointer (c)
     void PrintDebug(char * c);
     // Variables
     char *buffer;       // Ring Telegram
@@ -33,6 +27,7 @@ public:
     {
         NO_DATA = 0,
         INCOMPLETE_DATA = -1,
+        BUFFER_FULL = -2,
         INVALID_DATA = -3,
         UNEXPECTED_ERROR = -100,
         MESSAGE_OVERLENGTH = -101,

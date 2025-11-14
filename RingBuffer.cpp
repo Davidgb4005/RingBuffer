@@ -28,28 +28,28 @@ void RingBuffer::ResetBuffer()
     data_availible = 0;
 }
 
-int RingBuffer::ReadData(Telegram & data)
+int RingBuffer::ReadData(char * buffer)
 {
 
-    data.message_length = *read_ptr;
-    if (data_availible < data.message_length)
+    int len = *read_ptr;
+    if (data_availible < len)
     {
         return INCOMPLETE_DATA;
     }
     else
     {
         // Read Message Length As First Byte
-        data.check_sum = 0;
-        data.check_sum  += *(read_ptr);
+        uint16_t check_sum = 0;
+        check_sum += *(read_ptr);
         AdvanceReadPointer();
         int i;
-        for (i = 0; i < data.message_length - 2; i++)
+        for (i = 0; i < len; i++)
         {
-            *(data.message + i) = *(read_ptr);
-            data.check_sum  += *(read_ptr);
+            *(buffer + i) = *(read_ptr);
+            check_sum += *(read_ptr);
             AdvanceReadPointer();
         }
-        if (!ValidateCheckSum(&data.check_sum ))
+        if (!ValidateCheckSum(&check_sum))
         {
             return INVALID_CHECKSUM;
         }
@@ -59,26 +59,30 @@ int RingBuffer::ReadData(Telegram & data)
     return UNEXPECTED_ERROR;
 }
 
-int RingBuffer::WriteData(Telegram data)
+int RingBuffer::WriteData(char * buffer, int len)
 {
-    if (data.message_length < 2)
+    if (len < 2)
     {
         return INVALID_DATA;
     }
-    else if (data.message_length  > 253)
+    else if (len + data_availible > buffer_len-1)
+    {
+        return BUFFER_FULL;
+    }
+    else if (len > 253)
     {
         return MESSAGE_OVERLENGTH;
     }
     else
     {
         uint16_t check_sum = 0;
-        *write_ptr = data.message_length + 2; // Adds 2 To Account For Checksum
+        *write_ptr = len;
         check_sum += *write_ptr;
         AdvanceWritePointer();
         int i;
-        for (i = 0; i < data.message_length; i++)
+        for (i = 0; i < len; i++)
         {
-            *write_ptr = *(data.message + i);
+            *write_ptr = *(buffer + i);
             check_sum += *write_ptr;
             AdvanceWritePointer();
         }
@@ -108,7 +112,7 @@ int RingBuffer::AdvanceReadPointer()
         data_availible--;
         read_ptr++;
     }
-    return(0);
+    return (0);
 }
 
 int RingBuffer::AdvanceWritePointer()
@@ -128,7 +132,7 @@ int RingBuffer::AdvanceWritePointer()
         data_availible++;
         write_ptr++;
     }
-    return(0);
+    return (0);
 }
 void RingBuffer::InsertCheckSum(uint16_t *check_sum_ptr)
 {
@@ -142,14 +146,14 @@ void RingBuffer::InsertCheckSum(uint16_t *check_sum_ptr)
     AdvanceWritePointer();
 }
 
-bool RingBuffer::ValidateCheckSum(uint16_t * check_sum_ptr)
+bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
 {
     uint16_t msb = (*read_ptr) << 8;
     AdvanceReadPointer();
     uint16_t lsb = (*read_ptr) & 0x00ff;
     AdvanceReadPointer();
     uint16_t check_sum = msb + lsb + *check_sum_ptr;
-    //if ((msb + lsb + *check_sum_ptr) != 0) Figure Out Why This Fucks it
+    // if ((msb + lsb + *check_sum_ptr) != 0) Figure Out Why This Fucks it
     if ((check_sum) != 0)
     {
         return false;
@@ -171,17 +175,19 @@ void RingBuffer::PrintData()
     char c;
     while (temp_data_available > 0)
     {
-        len = *temp_read_ptr;
-        temp_read_ptr++; // skip length prefix
-        temp_data_available--;
-        if (len > temp_data_available)
+        len = (*temp_read_ptr);
+
+        if (len - 1 > temp_data_available)
         {
             std::cout << "Data Fragment(" << (temp_data_available) << "/" << static_cast<int>(len) << ") : ";
         }
         else
         {
-            std::cout << "Data Length(" << static_cast<int>(len) << ") : ";
+            std::cout << "Data Length(" << static_cast<int>(*temp_read_ptr) << ") : ";
         }
+
+        temp_read_ptr++;
+        temp_data_available--;
         for (int k = 0; k < len; ++k)
         {
             c = *temp_read_ptr;
@@ -193,17 +199,23 @@ void RingBuffer::PrintData()
                 temp_read_ptr = start_ptr;
             }
         }
+        std::cout << " - Checksum MSB:" << static_cast<int>(*temp_read_ptr);
+        temp_read_ptr++;
+        temp_data_available--;
+        std::cout << " LSB:" << static_cast<int>(*temp_read_ptr);
+        temp_read_ptr++;
+        temp_data_available--;
         std::cout << std::endl;
     }
 #endif
 }
 
-void RingBuffer::PrintMsg(Telegram data)
+void RingBuffer::PrintMsg(char * buffer, int len)
 {
 #if DEBUG
-    for (int k = 0; k < data.message_length; k++)
+    for (int k = 0; k < len; k++)
     {
-        std::cout << data.message[k];
+        std::cout << buffer[k];
     }
     std::cout << std::endl;
 #endif
