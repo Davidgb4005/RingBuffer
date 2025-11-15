@@ -172,6 +172,67 @@ bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
     return true;
 }
 
+void RingBuffer::WriteString(char *buffer, int len)
+{
+    char temp_buffer[256];
+    for (int i = 0; i < len - 1; i++)
+    {
+        temp_buffer[i + 1] = buffer[i];
+    }
+    temp_buffer[0] = len;
+    WriteData(temp_buffer);
+}
+void RingBuffer::WriteChars(char *buffer, int len)
+{
+    char temp_buffer[256];
+    for (int i = 0; i < len; i++)
+    {
+        temp_buffer[i + 1] = buffer[i];
+    }
+    temp_buffer[0] = len + 1;
+    WriteData(temp_buffer);
+}
+void RingBuffer::WriteStruct(void *data)
+{
+    WriteData(static_cast<char *>(data));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void RingBuffer::PrintData(bool print_as_int)
 {
 #if DEBUG // Enables Console Output For Debugging
