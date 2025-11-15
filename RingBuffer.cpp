@@ -22,16 +22,20 @@ RingBuffer::~RingBuffer()
 }
 void RingBuffer::ResetBuffer()
 {
+    std::cout << "Reset Buffer" << data_availible << std::endl;
     read_ptr = buffer;
     write_ptr = buffer;
-    buffer_overflow = false;
     data_availible = 0;
+    message_complete = true;
 }
-
-int RingBuffer::ReadData(char * buffer)
+int RingBuffer::GetMessageType()
+{
+    return *(read_ptr + 1);
+}
+int RingBuffer::ReadData(void *buffer)
 {
 
-    int len = *read_ptr;
+    int len = (*read_ptr);
     if (data_availible < len)
     {
         return INCOMPLETE_DATA;
@@ -39,54 +43,55 @@ int RingBuffer::ReadData(char * buffer)
     else
     {
         // Read Message Length As First Byte
-        uint16_t check_sum = 0;
-        check_sum += *(read_ptr);
-        AdvanceReadPointer();
+        uint16_t read_check_sum = 0;
         int i;
         for (i = 0; i < len; i++)
         {
-            *(buffer + i) = *(read_ptr);
-            check_sum += *(read_ptr);
+            *(static_cast<char *>(buffer) + i) = *(read_ptr);
+            read_check_sum += *(read_ptr);
             AdvanceReadPointer();
         }
-        if (!ValidateCheckSum(&check_sum))
+        if (!ValidateCheckSum(&read_check_sum))
         {
             return INVALID_CHECKSUM;
         }
-
         return i;
     }
-    return UNEXPECTED_ERROR;
 }
 
-int RingBuffer::WriteData(char * buffer, int len)
+int RingBuffer::WriteData(char *buffer)
 {
-    if (len < 2)
+    int len = buffer[0];
+    if (len + data_availible > buffer_len - 1)
     {
-        return INVALID_DATA;
-    }
-    else if (len + data_availible > buffer_len-1)
-    {
+        buffer_full = true;
         return BUFFER_FULL;
-    }
-    else if (len > 253)
-    {
-        return MESSAGE_OVERLENGTH;
     }
     else
     {
-        uint16_t check_sum = 0;
-        *write_ptr = len;
-        check_sum += *write_ptr;
-        AdvanceWritePointer();
+        buffer_full = false;
+    }
+    if (len < 0)
+    {
+        return INVALID_DATA;
+    }
+    else
+    {
         int i;
         for (i = 0; i < len; i++)
         {
-            *write_ptr = *(buffer + i);
+            if (bytes_remaining <= 0)
+            {
+                bytes_remaining = (*(buffer + i));
+            }
+            *write_ptr = (*(buffer + i));
             check_sum += *write_ptr;
             AdvanceWritePointer();
+            if (bytes_remaining == 0)
+            {
+                InsertCheckSum();
+            }
         }
-        InsertCheckSum(&check_sum);
         return i;
     }
     return UNEXPECTED_ERROR;
@@ -95,7 +100,10 @@ int RingBuffer::DataAvailible()
 {
     return data_availible;
 }
-
+bool RingBuffer::BufferFull()
+{
+    return buffer_full;
+}
 int RingBuffer::AdvanceReadPointer()
 {
     if (data_availible < 1)
@@ -124,19 +132,20 @@ int RingBuffer::AdvanceWritePointer()
     }
     else if (write_ptr == end_ptr)
     {
+        bytes_remaining--;
         data_availible++;
         write_ptr = start_ptr;
     }
     else
     {
+        bytes_remaining--;
         data_availible++;
         write_ptr++;
     }
     return (0);
 }
-void RingBuffer::InsertCheckSum(uint16_t *check_sum_ptr)
+void RingBuffer::InsertCheckSum()
 {
-    uint16_t check_sum = *check_sum_ptr;
     check_sum = ~check_sum + 1;
     char msb = check_sum >> 8;
     char lsb = check_sum & 0xff;
@@ -144,6 +153,8 @@ void RingBuffer::InsertCheckSum(uint16_t *check_sum_ptr)
     AdvanceWritePointer();
     *write_ptr = lsb;
     AdvanceWritePointer();
+    message_complete = true;
+    check_sum = 0;
 }
 
 bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
@@ -152,16 +163,16 @@ bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
     AdvanceReadPointer();
     uint16_t lsb = (*read_ptr) & 0x00ff;
     AdvanceReadPointer();
-    uint16_t check_sum = msb + lsb + *check_sum_ptr;
+    uint16_t read_check_sum = msb + lsb + *check_sum_ptr;
     // if ((msb + lsb + *check_sum_ptr) != 0) Figure Out Why This Fucks it
-    if ((check_sum) != 0)
+    if ((read_check_sum) != 0)
     {
         return false;
     }
     return true;
 }
 
-void RingBuffer::PrintData()
+void RingBuffer::PrintData(bool print_as_int)
 {
 #if DEBUG // Enables Console Output For Debugging
     int len = 0;
@@ -185,13 +196,14 @@ void RingBuffer::PrintData()
         {
             std::cout << "Data Length(" << static_cast<int>(*temp_read_ptr) << ") : ";
         }
-
-        temp_read_ptr++;
-        temp_data_available--;
+        std::cout << "Struct Type(" << static_cast<int>(*(temp_read_ptr + 1)) << ") : ";
         for (int k = 0; k < len; ++k)
         {
             c = *temp_read_ptr;
-            std::cout << c;
+            if (print_as_int)
+                std::cout << static_cast<int>(c);
+            else
+                std::cout << c;
             temp_read_ptr++;
             temp_data_available--;
             if (temp_read_ptr > end_ptr)
@@ -210,7 +222,7 @@ void RingBuffer::PrintData()
 #endif
 }
 
-void RingBuffer::PrintMsg(char * buffer, int len)
+void RingBuffer::PrintMsg(char *buffer, int len)
 {
 #if DEBUG
     for (int k = 0; k < len; k++)
