@@ -40,7 +40,7 @@ int main()
         char *data;
     };
 
-    struct __attribute__((packed)) MotorData : TelegramStruct
+    struct MotorData : TelegramStruct
     {
         char len = sizeof(MotorData);
         char struct_type = 1;
