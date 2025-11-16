@@ -10,16 +10,16 @@ public:
     void ResetBuffer(); // Resets All Errors And Resets (read_ptr) And (write_ptr) To (start_ptr)
 
     // Memeber Functions
-    void WriteString(char *buffer, int len);
-    void WriteChars(char *buffer, int len);
-    void WriteStruct(void *data);
+    int WriteString(char *buffer, int len);
+    int WriteChars(char *buffer, int len);
+    int WriteStruct(void *data);
     int ReadData(void *buffer); // Read 1 Complete Message From (This->buffer) and copy it into (c)
     int DataAvailible();
     bool BufferFull();
     int GetMessageType();
 
     // Debugging Memeber Functions MUST USE (#DEFINE DEBUG 1)
-    void PrintData(bool print_as_int);           // Prints All Bytes In Telegram DOES NOT CONSUME!
+    void PrintData();           // Prints All Bytes In Telegram DOES NOT CONSUME!
     static void PrintMsg(char *buffer, int len); // Prints (len) Bytes From Pointer (c)
     void PrintDebug(char *c);
     // Variables

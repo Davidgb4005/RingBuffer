@@ -6,7 +6,6 @@ RingBuffer ring(500);
 int main()
 {
 
-
     struct MotorData : RingBuffer::TelegramStruct
     {
         char len = sizeof(MotorData);
@@ -28,17 +27,18 @@ int main()
     motor.speed = 2271560481;
     motor.position = 2271560481;
     motor.direction = 2271560481;
-
+    char datfds[] = {'C', 'H', 'A', 'A', '6'};
     char test[] = "1234567890";
     char test2[] = {'T', 'h', 'i', 's', ' ', 'i', 's'};
-    ring.WriteStruct(&motor);
-    ring.WriteStruct(&button);
+    //ring.WriteStruct(&motor);
+    //ring.WriteStruct(&button);
     // WriteString(test, sizeof(test));
-    // WriteChars(test2, sizeof(test2));
+    ring.WriteChars(datfds, sizeof(datfds));
 
     // ring.PrintData();
+    char buffer2[256];
     RingBuffer::DefaultBuffer buffer;
-    while (ring.DataAvailible())
+    while (ring.DataAvailible()&&0)
     {
         int nxt = ring.GetMessageType();
         int len = ring.ReadData(&buffer);
@@ -57,7 +57,17 @@ int main()
             std::memcpy(&btn, &buffer, sizeof(btn));
             std::cout << btn.active << std::endl;
         }
+        else
+        {
+            ring.PrintData();
+            len = ring.ReadData(&buffer2);
+            ring.PrintMsg(buffer2,len);
+        }
     }
-
+        
+            ring.PrintData();
+            int len = ring.ReadData(&buffer2);
+            ring.PrintMsg(buffer2,len);
+        
     return 0;
 }

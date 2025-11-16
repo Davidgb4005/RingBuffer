@@ -172,7 +172,7 @@ bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
     return true;
 }
 
-void RingBuffer::WriteString(char *buffer, int len)
+int RingBuffer::WriteString(char *buffer, int len)
 {
     char temp_buffer[256];
     for (int i = 0; i < len - 1; i++)
@@ -180,9 +180,9 @@ void RingBuffer::WriteString(char *buffer, int len)
         temp_buffer[i + 1] = buffer[i];
     }
     temp_buffer[0] = len;
-    WriteData(temp_buffer);
+    return WriteData(temp_buffer);
 }
-void RingBuffer::WriteChars(char *buffer, int len)
+int RingBuffer::WriteChars(char *buffer, int len)
 {
     char temp_buffer[256];
     for (int i = 0; i < len; i++)
@@ -190,50 +190,17 @@ void RingBuffer::WriteChars(char *buffer, int len)
         temp_buffer[i + 1] = buffer[i];
     }
     temp_buffer[0] = len + 1;
-    WriteData(temp_buffer);
+    return WriteData(temp_buffer);
 }
-void RingBuffer::WriteStruct(void *data)
+int RingBuffer::WriteStruct(void *data)
 {
-    WriteData(static_cast<char *>(data));
+    return WriteData(static_cast<char *>(data));
 }
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void RingBuffer::PrintData(bool print_as_int)
+void RingBuffer::PrintData()
 {
 #if DEBUG // Enables Console Output For Debugging
     int len = 0;
@@ -261,7 +228,7 @@ void RingBuffer::PrintData(bool print_as_int)
         for (int k = 0; k < len; ++k)
         {
             c = *temp_read_ptr;
-            if (print_as_int)
+            if (false) // Debugging Causes output to be in Int instead of char
                 std::cout << static_cast<int>(c);
             else
                 std::cout << c;
