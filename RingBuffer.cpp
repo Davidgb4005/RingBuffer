@@ -1,230 +1,222 @@
 #include "RingBuffer.hpp"
-#define DEBUG 1
-#if DEBUG
 #include <iostream>
-#endif
-
-RingBuffer::RingBuffer(int len)
+RingBuffer::RingBuffer(uint16_t buffer_size)
 {
-    buffer = new char[len];
-    start_ptr = buffer;
-    end_ptr = buffer + len;
-    read_ptr = buffer;
-    write_ptr = buffer;
-    buffer_len = len;
-    data_availible = 0;
-}
+    this->buffer_size = buffer_size;
 
+    start_ptr = new uint8_t[buffer_size];
+    write_ptr = start_ptr;
+    read_ptr = start_ptr;
+    end_ptr = start_ptr + buffer_size - 1;
+}
 RingBuffer::~RingBuffer()
-
 {
-    delete[] buffer;
+    delete[] start_ptr;
 }
-void RingBuffer::ResetBuffer()
+uint16_t RingBuffer::Read(void *data)
 {
-    std::cout << "Reset Buffer" << data_availible << std::endl;
-    read_ptr = buffer;
-    write_ptr = buffer;
-    data_availible = 0;
-    message_complete = true;
-}
-int RingBuffer::GetMessageType()
-{
-    return *(read_ptr + 1);
-}
-int RingBuffer::ReadData(void *buffer)
-{
-
-    int len = (*read_ptr);
-    if (data_availible < len)
+    if (messages_availible > 0)
     {
-        return INCOMPLETE_DATA;
-    }
-    else
-    {
-        // Read Message Length As First Byte
-        uint16_t read_check_sum = 0;
-        int i;
-        for (i = 0; i < len; i++)
+        size_t i = 0;
+        uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
+        *data_ptr = *read_ptr;
+        uint16_t length = *data_ptr << 8;
+        AdvanceReadPtr();
+        *(data_ptr + 1) = *read_ptr;
+        length += (*read_ptr) & 0xff;
+        AdvanceReadPtr();
+        for (i = 2; i < length; i++)
         {
-            *(static_cast<char *>(buffer) + i) = *(read_ptr);
-            read_check_sum += *(read_ptr);
-            AdvanceReadPointer();
+            *(data_ptr + i) = *read_ptr;
+            AdvanceReadPtr();
         }
-        if (!ValidateCheckSum(&read_check_sum))
-        {
-            return INVALID_CHECKSUM;
-        }
+        messages_availible--;
         return i;
     }
+    else
+        return NO_MESSAGES;
 }
-
-int RingBuffer::WriteData(char *buffer)
+uint16_t RingBuffer::Write(Telegram *data)
 {
-    int len = buffer[0];
-    if (len + data_availible > buffer_len - 1)
+    int16_t size = (data->len_msb << 8) + (data->len_lsb & 0xff);
+    if (size > (buffer_size - bytes_availible))
     {
         buffer_full = true;
         return BUFFER_FULL;
     }
-    else
+    bytes_remaining = size;
+    uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
+    size_t i;
+    for (i = 0; i < size; i++)
     {
-        buffer_full = false;
+        *write_ptr = *(data_ptr + i);
+        AdvanceWritePtr();
     }
-    if (len < 0)
+    messages_availible++;
+    return i - size;
+}
+uint16_t RingBuffer::Write(StringTelegram *data)
+{
+    int16_t size = (data->len_msb << 8) + (data->len_lsb & 0xff);
+    if (size > (buffer_size - bytes_availible))
     {
-        return INVALID_DATA;
+        std::cout << "BUFFER FULL" << std::endl;
+        buffer_full = true;
+        return BUFFER_FULL;
     }
-    else
+    bytes_remaining = size;
+    uint8_t offset = reinterpret_cast<uint8_t *>(&data->data) - reinterpret_cast<uint8_t *>(data);
+    uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
+    size_t i;
+    for (i = 0; i < size; i++)
     {
-        int i;
-        for (i = 0; i < len; i++)
+        if (i < offset)
         {
-            if (bytes_remaining <= 0)
-            {
-                bytes_remaining = (*(buffer + i));
-            }
-            *write_ptr = (*(buffer + i));
-            check_sum += *write_ptr;
-            AdvanceWritePointer();
-            if (bytes_remaining == 0)
-            {
-                InsertCheckSum();
-            }
+            *write_ptr = *(data_ptr + i);
+            AdvanceWritePtr();
         }
-        return i;
+        else
+        {
+            *write_ptr = data->data[i - offset];
+            AdvanceWritePtr();
+        }
     }
-    return UNEXPECTED_ERROR;
+    messages_availible++;
+    return i - size;
 }
-int RingBuffer::DataAvailible()
-{
-    return data_availible;
-}
-bool RingBuffer::BufferFull()
-{
-    return buffer_full;
-}
-int RingBuffer::AdvanceReadPointer()
-{
-    if (data_availible < 1)
-    {
-        return BUFFER_OVERREAD;
-    }
-    else if (read_ptr == end_ptr)
-    {
-        data_availible--;
-        read_ptr = start_ptr;
-    }
-    else
-    {
-        data_availible--;
-        read_ptr++;
-    }
-    return (0);
-}
+uint16_t RingBuffer::Write(CharArrayTelegram *data)
 
-int RingBuffer::AdvanceWritePointer()
 {
-
-    if (write_ptr == read_ptr - 1 || (write_ptr == end_ptr && read_ptr == start_ptr))
+    int16_t size = (data->len_msb << 8) + (data->len_lsb & 0xff);
+    if (size > (buffer_size - bytes_availible))
     {
-        return BUFFER_OVERFLOW;
+        std::cout << "BUFFER FULL" << std::endl;
+        buffer_full = true;
+        return BUFFER_FULL;
+    }
+    bytes_remaining = size;
+    uint8_t offset = reinterpret_cast<uint8_t *>(&data->data) - reinterpret_cast<uint8_t *>(data);
+    uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
+    size_t i;
+    for (i = 0; i < size; i++)
+    {
+        if (i < offset)
+        {
+            *write_ptr = *(data_ptr + i);
+            AdvanceWritePtr();
+        }
+        else
+        {
+            *write_ptr = data->data[i - offset];
+            AdvanceWritePtr();
+        }
+    }
+    messages_availible++;
+    return i - size;
+}
+uint16_t RingBuffer::WriteRaw(uint8_t *data, uint16_t len, uint16_t offset)
+{
+    if (len < 2)
+    {
+        return DATA_TO_SHORT;
+    }
+    uint8_t *data_ptr = data;
+    size_t i = offset;
+    for (i; i < len; i++)
+    {
+        if (buffer_full)
+        {
+            return i - len;
+        }
+        if (bytes_remaining == 0 && message_complete)
+        {
+            bytes_remaining_msb = data[i] << 8;
+            message_complete = false;
+        }
+        else if (bytes_remaining == -1)
+        {
+            bytes_remaining_lsb = data[i] & 0xff;
+            bytes_remaining += bytes_remaining_lsb + bytes_remaining_msb;
+            bytes_remaining_lsb = 0;
+            bytes_remaining_msb = 0;
+        }
+        *write_ptr = *(data_ptr + i);
+        AdvanceWritePtr();
+        if (bytes_remaining == 0)
+        {
+            messages_availible++;
+            message_complete = true;
+        }
+    }
+    return i - len;
+}
+void RingBuffer::AdvanceWritePtr()
+{
+    if (write_ptr + 1 == read_ptr || (write_ptr == end_ptr && read_ptr == start_ptr))
+    {
+        std::cout << "BUFFER FULL" << std::endl;
+        buffer_full = true;
     }
     else if (write_ptr == end_ptr)
     {
-        bytes_remaining--;
-        data_availible++;
+        buffer_empty = false;
         write_ptr = start_ptr;
+        bytes_availible++;
+        bytes_remaining--;
     }
     else
     {
-        bytes_remaining--;
-        data_availible++;
+        buffer_empty = false;
         write_ptr++;
+        bytes_availible++;
+        bytes_remaining--;
     }
-    return (0);
 }
-void RingBuffer::InsertCheckSum()
+void RingBuffer::AdvanceReadPtr()
 {
-    check_sum = ~check_sum + 1;
-    char msb = check_sum >> 8;
-    char lsb = check_sum & 0xff;
-    *write_ptr = msb;
-    AdvanceWritePointer();
-    *write_ptr = lsb;
-    AdvanceWritePointer();
-    message_complete = true;
-    check_sum = 0;
-}
-
-bool RingBuffer::ValidateCheckSum(uint16_t *check_sum_ptr)
-{
-    uint16_t msb = (*read_ptr) << 8;
-    AdvanceReadPointer();
-    uint16_t lsb = (*read_ptr) & 0x00ff;
-    AdvanceReadPointer();
-    uint16_t read_check_sum = msb + lsb + *check_sum_ptr;
-    // if ((msb + lsb + *check_sum_ptr) != 0) Figure Out Why This Fucks it
-    if ((read_check_sum) != 0)
+    if (read_ptr == write_ptr)
     {
-        return false;
+        buffer_empty = true;
     }
-    return true;
-}
-
-int RingBuffer::WriteString(char *buffer, int len)
-{
-    char temp_buffer[256];
-    for (int i = 0; i < len - 1; i++)
+    else if (read_ptr == end_ptr)
     {
-        temp_buffer[i + 1] = buffer[i];
+        buffer_full = false;
+        read_ptr = start_ptr;
+        bytes_availible--;
     }
-    temp_buffer[0] = len;
-    return WriteData(temp_buffer);
-}
-int RingBuffer::WriteChars(char *buffer, int len)
-{
-    char temp_buffer[256];
-    for (int i = 0; i < len; i++)
+    else
     {
-        temp_buffer[i + 1] = buffer[i];
+        buffer_full = false;
+        read_ptr++;
+        bytes_availible--;
     }
-    temp_buffer[0] = len + 1;
-    return WriteData(temp_buffer);
 }
-int RingBuffer::WriteStruct(void *data)
-{
-    return WriteData(static_cast<char *>(data));
-}
-
-
-
 
 void RingBuffer::PrintData()
 {
-#if DEBUG // Enables Console Output For Debugging
-    int len = 0;
-    char *temp_read_ptr = read_ptr;
-    int temp_data_available = data_availible;
-    if (temp_data_available < 1)
+#if 1 // Enables Console Output For Debugging
+    uint8_t *temp_read_ptr = read_ptr;
+    if (bytes_availible < 1)
     {
         std::cout << "No Data" << std::endl;
         return;
     }
-    char c;
-    while (temp_data_available > 0)
+    uint8_t c;
+    uint16_t temp_bytes_availibe = bytes_availible;
+    while (temp_bytes_availibe > 0)
     {
-        len = (*temp_read_ptr);
+        int16_t len = (*temp_read_ptr << 8) + ((*(temp_read_ptr + 1)) & 0xff);
 
-        if (len - 1 > temp_data_available)
+        if (len > temp_bytes_availibe)
         {
-            std::cout << "Data Fragment(" << (temp_data_available) << "/" << static_cast<int>(len) << ") : ";
+            std::cout << "Data Fragment(" << (temp_bytes_availibe) << "/" << static_cast<int>(len) << ") : ";
         }
         else
         {
-            std::cout << "Data Length(" << static_cast<int>(*temp_read_ptr) << ") : ";
+            std::cout << "Data Length(" << len << ") : ";
         }
-        std::cout << "Struct Type(" << static_cast<int>(*(temp_read_ptr + 1)) << ") : ";
+        std::cout << "Struct Type(" << static_cast<int>(*(temp_read_ptr + 2)) << ") : ";
+        std::cout << "Priority(" << static_cast<int>(*(temp_read_ptr + 3)) << ") : ";
         for (int k = 0; k < len; ++k)
         {
             c = *temp_read_ptr;
@@ -232,31 +224,22 @@ void RingBuffer::PrintData()
                 std::cout << static_cast<int>(c);
             else
                 std::cout << c;
-            temp_read_ptr++;
-            temp_data_available--;
+            if (temp_read_ptr == end_ptr)
+            {
+                temp_read_ptr = start_ptr;
+                temp_bytes_availibe--;
+            }
+            else
+            {
+                temp_read_ptr++;
+                temp_bytes_availibe--;
+            }
             if (temp_read_ptr > end_ptr)
             {
                 temp_read_ptr = start_ptr;
             }
         }
-        std::cout << " - Checksum MSB:" << static_cast<int>(*temp_read_ptr);
-        temp_read_ptr++;
-        temp_data_available--;
-        std::cout << " LSB:" << static_cast<int>(*temp_read_ptr);
-        temp_read_ptr++;
-        temp_data_available--;
         std::cout << std::endl;
     }
-#endif
-}
-
-void RingBuffer::PrintMsg(char *buffer, int len)
-{
-#if DEBUG
-    for (int k = 0; k < len; k++)
-    {
-        std::cout << buffer[k];
-    }
-    std::cout << std::endl;
 #endif
 }

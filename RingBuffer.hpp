@@ -1,70 +1,75 @@
-#pragma once
 #include <memory>
+enum ErrorCodes
+{
+    DATA_TO_SHORT = -1,
+    NO_MESSAGES = -2,
+    BUFFER_FULL = -3
+};
+struct Telegram
+{
+    uint8_t len_msb = 0;
+    uint8_t len_lsb = 0;
+    uint8_t type = 0;
+    uint8_t priority = 0;
+
+};
+
+struct __attribute__((packed)) StringTelegram : Telegram
+{
+    uint8_t *data = nullptr;
+    void Set(const char *buffer, int length)
+    {
+        type = 1;
+        priority = 111;
+        length--;                                                               // Remove Null Termination Char
+        len_msb = static_cast<uint8_t>((length + sizeof(StringTelegram) - 8) >> 8);   // Add Length for Base Telegram info
+        len_lsb = static_cast<uint8_t>((length + sizeof(StringTelegram) - 8) & 0xff); // Add Length for Base Telegram info
+        data = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(buffer));
+    }
+};
+struct __attribute__((packed)) CharArrayTelegram : Telegram
+{
+    uint8_t *data = nullptr;
+    void Set(uint8_t *buffer, int length)
+    {
+        type = 2;
+        priority = 31;                                                          // Remove Null Termination Char
+        len_msb = static_cast<uint8_t>((length + sizeof(CharArrayTelegram) - sizeof(uintptr_t)) >> 8);   // Add Length for Base Telegram info
+        len_lsb = static_cast<uint8_t>((length + sizeof(CharArrayTelegram) - sizeof(uintptr_t)) & 0xff); // Add Length for Base Telegram info
+        data = buffer;
+    }
+};
+
 class RingBuffer
 {
-public:
-    // Constructors
-    RingBuffer(int len);
-    ~RingBuffer();
-    // Resets
-    void ResetBuffer(); // Resets All Errors And Resets (read_ptr) And (write_ptr) To (start_ptr)
-
-    // Memeber Functions
-    int WriteString(char *buffer, int len);
-    int WriteChars(char *buffer, int len);
-    int WriteStruct(void *data);
-    int ReadData(void *buffer); // Read 1 Complete Message From (This->buffer) and copy it into (c)
-    int DataAvailible();
-    bool BufferFull();
-    int GetMessageType();
-
-    // Debugging Memeber Functions MUST USE (#DEFINE DEBUG 1)
-    void PrintData();           // Prints All Bytes In Telegram DOES NOT CONSUME!
-    static void PrintMsg(char *buffer, int len); // Prints (len) Bytes From Pointer (c)
-    void PrintDebug(char *c);
-    // Variables
-    char *buffer; // Ring Telegram
-
-    // Enums
-    enum Error
-    {
-        INCOMPLETE_DATA = -1,
-        BUFFER_FULL = -2,
-        INVALID_DATA = -3,
-        UNEXPECTED_ERROR = -100,
-        MESSAGE_OVERLENGTH = -101,
-        BUFFER_OVERREAD = -102,
-        BUFFER_OVERFLOW = -103,
-        INVALID_CHECKSUM = -104,
-    };
-    // Any Inherited Structs Must Have the First 2 Memeber Be
-    //(char len = sizeof(*YourStruct*);) And (char struct_type = *Custom User Value*;)
-    struct TelegramStruct
-    {
-    };
-    struct DefaultBuffer : TelegramStruct
-    {
-        char len;
-        char struct_type;
-        char *data;
-    };
 
 private:
-    bool debug; // Debug enabled Flag
-    char *read_ptr;
-    char *write_ptr;
-    char *end_ptr;
-    char *start_ptr;
-    int buffer_len;
-    int data_availible; // Amount Of Valid Bytes In Telegram
+    bool message_complete = true;
+    int16_t bytes_remaining = 0;
+    int16_t bytes_remaining_msb = 0;
+    int16_t bytes_remaining_lsb = 0;
+    uint16_t bytes_availible = 0;
+    uint16_t messages_availible = 0;
+    uint16_t buffer_size = 0;
     bool buffer_full = false;
-    uint16_t check_sum;
-    int bytes_remaining = 0;
-    bool message_complete = false;
+    bool buffer_empty = false;
 
-    bool ValidateCheckSum(uint16_t *check_sum_ptr);
-    void InsertCheckSum();
-    int AdvanceReadPointer();
-    int AdvanceWritePointer();
-    int WriteData(char *buffer); // Write (len) Bytes From (c) Into (This->buffer)
+public:
+    RingBuffer(uint16_t buffer_size);
+    ~RingBuffer();
+
+    uint16_t Write(Telegram *data);
+    uint16_t Write(StringTelegram *data);
+    uint16_t Write(CharArrayTelegram *data);
+
+    uint16_t WriteRaw(uint8_t *data, uint16_t len, uint16_t offset);
+    uint16_t Read(void *data);
+    void AdvanceWritePtr();
+    void AdvanceReadPtr();
+    void PrintData();
+
+    uint8_t *write_ptr = nullptr;
+    uint8_t *read_ptr = nullptr;
+    uint8_t *start_ptr = nullptr;
+    uint8_t *end_ptr = nullptr;
 };
