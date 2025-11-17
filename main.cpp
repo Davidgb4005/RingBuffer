@@ -64,11 +64,12 @@ int main()
     // offset = buffer.WriteRaw(reinterpret_cast<uint8_t *>(word3), 7, 0);
     char bufz[1000];
     buffer.PrintData();
+    std::cout<<"DATA ENDS HERE"<<std::endl;
     len = buffer.Read(&bufz);
 
     offset = buffer.Write(&motordata);
     offset = buffer.Write(&motordata2);
-    
+
     buffer.PrintData();
 #endif
     return 1;
