@@ -1,4 +1,9 @@
 #include <memory>
+
+#ifndef _DEBUG
+#define _DEBUG 0
+#endif
+
 enum ErrorCodes
 {
     DATA_TO_SHORT = -1,
@@ -64,6 +69,8 @@ private:
     uint16_t buffer_size = 0;
     bool buffer_full = false;
     bool buffer_empty = false;
+    //Debugging Features
+    void PrintDebug(const char * str ,int16_t error_code,int16_t line);
 
 public:
     RingBuffer(uint16_t buffer_size);
@@ -74,7 +81,10 @@ public:
     uint16_t Write(CharArrayTelegram *data);
 
     uint16_t WriteRaw(uint8_t *data, uint16_t len, uint16_t offset);
-    uint16_t Read(void *data);
+    uint16_t Read(Telegram *data);
+    uint16_t Read(StringTelegram *data, char *buffer);
+    uint16_t Read(CharArrayTelegram *data, char *buffer);
+
     int16_t AdvanceTempReadPtr(uint8_t *&temp_ptr);
     int16_t AdvanceWritePtr();
     int16_t AdvanceReadPtr();
