@@ -21,9 +21,10 @@ uint16_t RingBuffer::BytesAvailible()
 {
     return bytes_availible;
 }
-bool RingBuffer::BufferFull(){
+bool RingBuffer::BufferFull()
+{
 
-        return buffer_full;
+    return buffer_full;
 }
 
 uint16_t RingBuffer::Read(void *data)
@@ -91,7 +92,7 @@ uint16_t RingBuffer::Write(StringTelegram *data)
 
     uint8_t offset = reinterpret_cast<uint8_t *>(&data->data) - reinterpret_cast<uint8_t *>(data);
     uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
-    size_t i=0;
+    size_t i = 0;
     for (i = 0; i < size; i++)
     {
         if (i < offset)
