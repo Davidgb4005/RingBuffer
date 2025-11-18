@@ -21,10 +21,10 @@ uint16_t RingBuffer::BytesAvailible()
 {
     return bytes_availible;
 }
-bool RingBuffer::BufferFull()
+uint16_t RingBuffer::BytesRemaining()
 {
 
-    return buffer_full;
+    return buffer_size - bytes_availible;
 }
 
 uint16_t RingBuffer::Read(void *data)
@@ -62,7 +62,7 @@ uint16_t RingBuffer::Read(void *data)
 uint16_t RingBuffer::Write(Telegram *data)
 {
     int16_t size = (data->len_msb << 8) + (data->len_lsb & 0xff);
-    if (size > (buffer_size - bytes_availible))
+    if (size + bytes_availible > buffer_size - 1)
     {
         return STRUCT_LARGER_THAN_BUFFER;
     }
@@ -89,7 +89,6 @@ uint16_t RingBuffer::Write(StringTelegram *data)
         return STRING_LARGER_THAN_BUFFER;
     }
     bytes_remaining = size;
-
     uint8_t offset = reinterpret_cast<uint8_t *>(&data->data) - reinterpret_cast<uint8_t *>(data);
     uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
     size_t i = 0;
@@ -149,6 +148,10 @@ uint16_t RingBuffer::Write(CharArrayTelegram *data)
 uint16_t RingBuffer::WriteRaw(uint8_t *data, uint16_t len, uint16_t offset)
 
 {
+    if (bytes_availible + len > buffer_size - 1)
+    {
+        return RAW_DATA_LARGER_THAN_BUFFER;
+    }
     if (len < 2)
     {
         return DATA_TO_SHORT;

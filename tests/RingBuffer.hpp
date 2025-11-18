@@ -8,7 +8,7 @@ enum ErrorCodes
     CHAR_ARRAY_LARGER_THAN_BUFFER = -5,
     STRING_LARGER_THAN_BUFFER = -6,
     STRUCT_LARGER_THAN_BUFFER = -7,
-
+    RAW_DATA_LARGER_THAN_BUFFER = -8,
 
     UNEXPECTED_ERROR_GetType = -900,
     UNEXPECTED_ERROR_AdvanceWritePtr = -901,
@@ -81,7 +81,7 @@ public:
     void PrintData();
     int16_t GetType();
     int16_t GetAdr();
-    bool BufferFull();
+    uint16_t BytesRemaining();
     uint16_t MessageAvailible();
     uint16_t BytesAvailible();
     uint8_t *write_ptr = nullptr;
