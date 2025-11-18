@@ -7,7 +7,9 @@
             "command": "g++",
             "args": [
                 "-g",
-                "*.cpp",
+                "-D_DEBUG=0",
+                "${fileDirname}/*.cpp",
+                "${workspaceFolder}/RingBuffer/src/*.cpp",
                 "-o",
                 "main"
             ],

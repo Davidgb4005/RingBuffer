@@ -1,7 +1,7 @@
-#include "RingBuffer.hpp"
+#include "../src/RingBuffer.hpp"
 #include <iostream>
 #include <string>
-#include "gtest/gtest.h"
+
 RingBuffer buffer(256);
 enum MessageType
 {
@@ -52,53 +52,36 @@ struct __attribute__((packed)) EncoderTelegram : Telegram
 };
 int main()
 {
-    int len = 0;
-    StepperMotorTelegram Motor;
-    Motor.active = false;
-    Motor.direction = 423;
-    Motor.speed = 1231;
-    Motor.time = 432;
-    Motor.mode = 'c';
-    StepperMotorTelegram Motor2;
-    Motor2.active = false;
-    Motor2.direction = 423;
-    Motor2.speed = 1231;
-    Motor2.time = 432;
-    Motor2.mode = 'c';
-    EncoderTelegram Encoder;
-    Encoder.active = false;
-    Encoder.direction = 1;
-    Encoder.speed = 2;
-    Encoder.time = 3;
-    Encoder.mode = '4';
-    Encoder.steps = 5;
-    EncoderTelegram Encoder2;
-    Encoder2.active = false;
-    Encoder2.direction = 6;
-    Encoder2.speed = 7;
-    Encoder2.time = 8;
-    Encoder2.mode = '9';
-    Encoder2.steps = 10;
 
-    int offset = 0;
-
-    RingBuffer buffer(128);
-
-    StepperMotorTelegram msg;
-    msg.speed = 1231;
-    msg.direction = 423;
-    msg.active = false;
-    msg.time = 432;
-    msg.mode = 'c';
-    // Keep writing until full
-    int writes = 0;
-    int16_t result = 0;
-    while (result != STRUCT_LARGER_THAN_BUFFER)
+    char String[] = "This is a Test string";
+    char array[] = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'};
+    StringTelegram str;
+    CharArrayTelegram chr;
+    chr.Set((uint8_t *)array, 11, 77);
+    str.Set(String, sizeof(String), 89);
+    // Write several alternating messages
+    buffer.Write(&str);
+    buffer.Write(&chr);
+    int8_t type = buffer.GetType();
+    StringTelegram buffer1;
+    char temp_buffer[256];
+    uint16_t len;
+    len = buffer.Read(&buffer1, temp_buffer);
+    //buffer.PrintData();
+    for (int i = 0; i < len; i++)
     {
-        result = buffer.Write(&msg);
-        std::cout << result << std::endl;
-        if (result == STRUCT_LARGER_THAN_BUFFER)
-            break;
+        std::cout<<buffer1.data[i]<<std::endl;
+    }
+
+    type = buffer.GetType();
+    int adr = buffer.GetAdr();
+    CharArrayTelegram buffer2;
+    len = buffer.Read(&buffer2, temp_buffer);
+    for (int i = 0; i < len; i++)
+    {
+        if(buffer2.data[i] == array[i]){
+            std::cout<<"Correct"<<std::endl;
+        }
     }
 
 #if 0
