@@ -37,7 +37,7 @@ uint16_t RingBuffer::Read(Telegram *data)
         *data_ptr = *read_ptr;
         uint16_t length = 0;
 
-        length = *data_ptr << 8;
+        length = *read_ptr << 8;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -45,7 +45,7 @@ uint16_t RingBuffer::Read(Telegram *data)
             return (err);
         }
         *(data_ptr + 1) = *read_ptr;
-        length += (*read_ptr) & 0xff;
+        length += *read_ptr & 0xff;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -81,7 +81,7 @@ uint16_t RingBuffer::Read(StringTelegram *data, char *buffer)
         *data_ptr = *read_ptr;
         uint16_t length = 0;
 
-        length = *data_ptr << 8;
+        length = *read_ptr << 8;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -89,7 +89,7 @@ uint16_t RingBuffer::Read(StringTelegram *data, char *buffer)
             return (err);
         }
         *(data_ptr + 1) = *read_ptr;
-        length += (*read_ptr) & 0xff;
+        length += *read_ptr & 0xff;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -145,7 +145,7 @@ uint16_t RingBuffer::Read(CharArrayTelegram *data, char *buffer)
         *data_ptr = *read_ptr;
         uint16_t length = 0;
 
-        length = *data_ptr << 8;
+        length = *read_ptr << 8;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -153,7 +153,7 @@ uint16_t RingBuffer::Read(CharArrayTelegram *data, char *buffer)
             return (err);
         }
         *(data_ptr + 1) = *read_ptr;
-        length += (*read_ptr) & 0xff;
+        length += *read_ptr & 0xff;
         err = AdvanceReadPtr();
         if (err < 0)
         {
@@ -215,7 +215,9 @@ uint16_t RingBuffer::Write(Telegram *data)
     for (i = 0; i < size; i++)
     {
         *write_ptr = *(data_ptr + i);
+        std::cout << (uint16_t)(*write_ptr) << "  ";
         int16_t err = AdvanceWritePtr();
+
         if (err < 0)
         {
             PrintDebug("Advance Write Pointer Error", err, __LINE__);
@@ -319,7 +321,7 @@ uint16_t RingBuffer::WriteRaw(uint8_t *data, uint16_t len, uint16_t offset)
 
     uint8_t *data_ptr = data;
     size_t i = offset;
-    for (i; i < len; i++)
+    for (i = offset; i < len; i++)
     {
         if (buffer_full)
         {
@@ -359,9 +361,52 @@ uint16_t RingBuffer::WriteRaw(uint8_t *data, uint16_t len, uint16_t offset)
     }
     return i - len;
 }
+uint16_t RingBuffer::ReadRaw(uint8_t *data)
+{
+    if (messages_availible > 0)
+    {
+        size_t i = 0;
+        int16_t err = 0;
+        uint8_t *data_ptr = reinterpret_cast<uint8_t *>(data);
+        *data_ptr = *read_ptr;
+        uint16_t length = 0;
+        length = *read_ptr << 8;
+        err = AdvanceReadPtr();
+        if (err < 0)
+        {
+            PrintDebug("Advance Read Pointer Error", err, __LINE__);
+            return (err);
+        }
+        *(data_ptr + 1) = *read_ptr;
+        length += *read_ptr & 0xff;
+        err = AdvanceReadPtr();
+        if (err < 0)
+        {
+            PrintDebug("Advance Read Pointer Error", err, __LINE__);
+            return (err);
+        }
+        for (i = 2; i < length; i++)
+        {
+            *(data_ptr + i) = *read_ptr;
+            err = AdvanceReadPtr();
+            if (err < 0)
+            {
+                PrintDebug("Advance Read Pointer Error", err, __LINE__);
+                return (err);
+            }
+        }
+        messages_availible--;
+        return i;
+    }
+    else
+    {
+        PrintDebug("No Messages", NO_MESSAGES, __LINE__);
+        return NO_MESSAGES;
+    }
+}
 int16_t RingBuffer::GetAdr()
 {
-    if (messages_availible < 1 || 1)
+    if (messages_availible < 1)
     {
         PrintDebug("No Messages", NO_MESSAGES, __LINE__);
         return NO_MESSAGES;
@@ -402,7 +447,7 @@ int16_t RingBuffer::GetType()
         }
         return *temp_ptr;
     }
-    PrintDebug("Unexpect Error",UNEXPECTED_ERROR_GetType, __LINE__);
+    PrintDebug("Unexpect Error", UNEXPECTED_ERROR_GetType, __LINE__);
     return UNEXPECTED_ERROR_GetType;
 }
 int16_t RingBuffer::AdvanceWritePtr()
@@ -429,7 +474,7 @@ int16_t RingBuffer::AdvanceWritePtr()
         bytes_remaining--;
         return 0;
     }
-    PrintDebug("Unexpect Error",UNEXPECTED_ERROR_AdvanceWritePtr, __LINE__);
+    PrintDebug("Unexpect Error", UNEXPECTED_ERROR_AdvanceWritePtr, __LINE__);
     return UNEXPECTED_ERROR_AdvanceWritePtr;
 }
 
@@ -454,7 +499,7 @@ int16_t RingBuffer::AdvanceReadPtr()
         bytes_availible--;
         return 0;
     }
-    PrintDebug("Unexpect Error",UNEXPECTED_ERROR_AdvanceReadPtr, __LINE__);
+    PrintDebug("Unexpect Error", UNEXPECTED_ERROR_AdvanceReadPtr, __LINE__);
     return UNEXPECTED_ERROR_AdvanceReadPtr;
 }
 int16_t RingBuffer::AdvanceTempReadPtr(uint8_t *&temp_ptr)
@@ -470,7 +515,7 @@ int16_t RingBuffer::AdvanceTempReadPtr(uint8_t *&temp_ptr)
         temp_ptr++;
         return 0;
     }
-    PrintDebug("Unexpect Error",UNEXPECTED_ERROR_AdvanceTempReadPtr, __LINE__);
+    PrintDebug("Unexpect Error", UNEXPECTED_ERROR_AdvanceTempReadPtr, __LINE__);
     return UNEXPECTED_ERROR_AdvanceTempReadPtr;
 }
 
@@ -492,7 +537,7 @@ void RingBuffer::PrintData()
     uint16_t temp_bytes_availibe = bytes_availible;
     while (temp_bytes_availibe > 0)
     {
-        int16_t len = (*temp_read_ptr << 8) + ((*(temp_read_ptr + 1)) & 0xff);
+        int16_t len = (*(temp_read_ptr) << 8) + (*(temp_read_ptr + 1) & 0xff);
 
         if (len > temp_bytes_availibe)
         {
@@ -504,6 +549,7 @@ void RingBuffer::PrintData()
         }
         std::cout << "Struct Type(" << static_cast<int>(*(temp_read_ptr + 2)) << ") : ";
         std::cout << "Priority(" << static_cast<int>(*(temp_read_ptr + 3)) << ") : ";
+
         for (int k = 0; k < len; ++k)
         {
             c = *temp_read_ptr;
@@ -531,9 +577,9 @@ void RingBuffer::PrintData()
 #endif
 }
 
-void RingBuffer::PrintDebug(const char * str ,int16_t error_code,int16_t line)
+void RingBuffer::PrintDebug(const char *str, int16_t error_code, int16_t line)
 {
-    #if (_DEBUG == 1)
-    std::cout << "File: " << __FILE__ << " - Line: " << line << " - Err Msg: " <<str<<" - Err Code: "<<error_code<< std::endl;
-    #endif
+#if (_DEBUG == 1)
+    std::cout << "File: " << __FILE__ << " - Line: " << line << " - Err Msg: " << str << " - Err Code: " << error_code << std::endl;
+#endif
 }

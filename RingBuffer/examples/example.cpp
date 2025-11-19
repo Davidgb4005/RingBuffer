@@ -19,7 +19,7 @@ void printer()
     }
     std::cout << std::endl;
 }
-struct __attribute__((packed)) StepperMotorTelegram : Telegram
+struct StepperMotorTelegram : Telegram
 {
     int speed;
     int direction;
@@ -34,7 +34,7 @@ struct __attribute__((packed)) StepperMotorTelegram : Telegram
         len_lsb = static_cast<uint8_t>(sizeof(StepperMotorTelegram)) & 0xff; // Add Length for Base Telegram info
     }
 };
-struct __attribute__((packed)) EncoderTelegram : Telegram
+struct EncoderTelegram : Telegram
 {
     int speed;
     int direction;
@@ -52,97 +52,51 @@ struct __attribute__((packed)) EncoderTelegram : Telegram
 };
 int main()
 {
+    RingBuffer buffer(500);
 
+    StepperMotorTelegram stp_in;
+    stp_in.speed = 71;
+    stp_in.direction = 72;
+    stp_in.active = true;
+    stp_in.time = 73;
+    stp_in.mode = 'c';
+    StepperMotorTelegram stp_in_base;
+    stp_in_base.speed = stp_in.speed;
+    stp_in_base.direction = stp_in.direction;
+    stp_in_base.active = stp_in.active;
+    stp_in_base.time = stp_in.time;
+    stp_in_base.mode = stp_in.mode;
+    EncoderTelegram enc_in;
+    enc_in.speed = 121;
+    enc_in.direction = -543;
+    enc_in.active = true;
+    enc_in.time = -0;
+    enc_in.mode = 'R';
+    enc_in.steps = -5555;
+    EncoderTelegram enc_in_base;
+    enc_in_base.speed = enc_in.speed;
+    enc_in_base.direction = enc_in.direction;
+    enc_in_base.active = enc_in.active;
+    enc_in_base.time = enc_in.time;
+    enc_in_base.mode = enc_in.mode;
+    enc_in_base.steps = enc_in.steps;
     char String[] = "This is a Test string";
     char array[] = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'};
-    StringTelegram str;
-    CharArrayTelegram chr;
-    chr.Set((uint8_t *)array, 11, 77);
-    str.Set(String, sizeof(String), 89);
-    // Write several alternating messages
-    buffer.Write(&str);
-    buffer.Write(&chr);
-    int8_t type = buffer.GetType();
-    StringTelegram buffer1;
-    char temp_buffer[256];
-    uint16_t len;
-    len = buffer.Read(&buffer1, temp_buffer);
-    //buffer.PrintData();
-    for (int i = 0; i < len; i++)
-    {
-        std::cout<<buffer1.data[i]<<std::endl;
-    }
+    StringTelegram str_in;
+    CharArrayTelegram chr_in;
+    chr_in.Set((uint8_t *)array, 11, 77);
+    str_in.Set(String, sizeof(String), 89);
 
-    type = buffer.GetType();
-    int adr = buffer.GetAdr();
-    CharArrayTelegram buffer2;
-    len = buffer.Read(&buffer2, temp_buffer);
-    for (int i = 0; i < len; i++)
-    {
-        if(buffer2.data[i] == array[i]){
-            std::cout<<"Correct"<<std::endl;
-        }
-    }
+    // Keep writing until full
+    int writes = 0;
+    int16_t result = 0;
+    int static flip_flop = 0;
+    uint8_t bufferz[512];
+    result = buffer.Write(&stp_in);
+    buffer.PrintData();
 
-#if 0
-
-    offset = buffer.Write(&Motor);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Motor);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Motor);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Motor);
-    offset = buffer.Write(&Encoder);
-    offset = buffer.Write(&Encoder);
-    int16_t bytes_remaining = 0;
-    while (!buffer.BufferFull() && !(bytes_remaining < 0))
-    {
-        bytes_remaining = buffer.Write(&Motor);
-        bytes_remaining = buffer.Write(&Encoder);
-        std::cout << "Buffer Full" << buffer.BytesAvailible() << std::endl;
-    }
-
-    while (buffer.MessageAvailible()>0)
-    {
-        switch (buffer.GetType())
-        {
-        case STEPPER_MOTOR:
-        {
-            StepperMotorTelegram motortest;
-            len = buffer.Read(&motortest);
-            std::cout << motortest.type << "  ";
-            std::cout << motortest.address << "  ";
-            std::cout << motortest.mode << "  ";
-            std::cout << motortest.speed << "  ";
-            std::cout << motortest.time << "  ";
-            std::cout << motortest.direction << std::endl;
-            break;
-        }
-
-        case ENCODER:
-        {
-            EncoderTelegram encodertest;
-            len = buffer.Read(&encodertest);
-            std::cout << encodertest.type << "  ";
-            std::cout << encodertest.address << "  ";
-            std::cout << encodertest.mode << "  ";
-            std::cout << encodertest.speed << "  ";
-            std::cout << encodertest.time << "  ";
-            std::cout << encodertest.steps << "  ";
-            std::cout << encodertest.direction << std::endl;
-            break;
-        }
-        case CLAMP:
-
-        default:
-            std::cout << buffer.GetType() << std::endl;
-        };
-    }
-
-    // buffer.PrintData();
-#endif
-    return 1;
+    result = buffer.ReadRaw((uint8_t *)bufferz);
+    for (int i = 0; i < result; i++)
+        std::cout << bufferz[i];
+    int ewr = 0;
 }
